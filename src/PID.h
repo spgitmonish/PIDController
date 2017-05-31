@@ -1,45 +1,32 @@
 #ifndef PID_H
 #define PID_H
 
-class PID {
+class PID
+{
 public:
-  /*
-  * Errors
-  */
+  // Error Variables for Propotional, Integral and Differentiate components
   double p_error;
   double i_error;
   double d_error;
 
-  /*
-  * Coefficients
-  */ 
+  // Coefficient Variables for Propotional, Integral and Differentiate components
   double Kp;
   double Ki;
   double Kd;
 
-  /*
-  * Constructor
-  */
+  // Constructor
   PID();
 
-  /*
-  * Destructor.
-  */
+  // Destructor
   virtual ~PID();
 
-  /*
-  * Initialize PID.
-  */
+  // Initializes the PID controller
   void Init(double Kp, double Ki, double Kd);
 
-  /*
-  * Update the PID error variables given cross track error.
-  */
+  // Updates the PID error variables given cross track error
   void UpdateError(double cte);
 
-  /*
-  * Calculate the total PID error.
-  */
+  // Calculates the total PID error
   double TotalError();
 };
 

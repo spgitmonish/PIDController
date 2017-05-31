@@ -10,12 +10,17 @@ PID::PID() {}
 
 PID::~PID() {}
 
-void PID::Init(double Kp, double Ki, double Kd) {
+// Initializes the PID controller
+void PID::Init(double Kp, double Ki, double Kd)
+{
 }
 
-void PID::UpdateError(double cte) {
+// Updates the PID error variables given cross track error
+void PID::UpdateError(double cte)
+{
 }
 
-double PID::TotalError() {
+// Calculates the total PID error
+double PID::TotalError()
+{
 }
-
