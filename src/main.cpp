@@ -36,7 +36,10 @@ int main()
   uWS::Hub h;
 
   PID pid;
-  // TODO: Initialize the pid variable.
+
+  // Initialize the pid variable with the values for the constants of
+  // the respective components
+  pid.Init(1.0, 1.0, 1.0);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {
@@ -57,6 +60,7 @@ int main()
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
           double steer_value;
+          
           /*
           * TODO: Calcuate steering value here, remember the steering value is
           * [-1, 1].
@@ -121,6 +125,6 @@ int main()
     std::cerr << "Failed to listen to port" << std::endl;
     return -1;
   }
-  
+
   h.run();
 }
