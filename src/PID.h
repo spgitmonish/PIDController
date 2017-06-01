@@ -7,6 +7,8 @@
 #ifndef PID_H
 #define PID_H
 
+#define DEBUG 0
+
 class PID
 {
 public:

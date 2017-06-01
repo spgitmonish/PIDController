@@ -60,6 +60,10 @@ double PID::TotalError(double cte)
   // Calculate the total error with the calculated coefficients
   total_error = -(Kp * p_error) - (Ki * i_error) - (Kd * d_error);
 
+#if DEBUG
+  cout << "TE: " << total_error << endl;
+#endif
+
   // Return the new error calculated
   return total_error;
 }
@@ -74,6 +78,10 @@ void PID::Twiddle(double cte)
   //       coefficients are set to 0.0
   vector<double> coefficients{Kp, Ki, Kd};
 
+#if DEBUG
+  cout << "Before(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
+#endif
+
   // Initialize the vector of potential changes to the coefficients
   vector<double> potential_coefficients{1.0, 1.0, 1.0};
 
@@ -83,8 +91,18 @@ void PID::Twiddle(double cte)
                                         potential_coefficients.end(),
                                         0.0);
 
+#if DEBUG
+  cout << "SoPC: " << sum_of_pot_coeffs << endl;
+#endif
+
   // Variable to store the best error calculated
-  double best_error = -(Kp * p_error) - (Ki * i_error) - (Kd * d_error);
+  double best_error = -(coefficients[0] * p_error) \
+                      -(coefficients[1] * i_error) \
+                      -(coefficients[2] * d_error);
+
+#if DEBUG
+  cout << "BE: " << best_error << endl;
+#endif
 
   // Twiddle algorithm goes till the sum of the potential is less than a threshold
   while(sum_of_pot_coeffs > 0.2)
@@ -154,4 +172,8 @@ void PID::Twiddle(double cte)
   Kp = coefficients[0];
   Ki = coefficients[1];
   Kd = coefficients[2];
+
+#if DEBUG
+  cout << "After(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
+#endif
 }
