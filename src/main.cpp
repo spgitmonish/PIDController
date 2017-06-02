@@ -39,7 +39,7 @@ int main()
 
   // Initialize the pid variable with the values for the constants of
   // the respective components
-  pid.Init(0.1, 0.1, 0.1);
+  pid.Init(0.0, 0.0, 0.0);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {
@@ -68,13 +68,39 @@ int main()
           * another PID controller to control the speed!
           */
           pid.TotalError(cte);
+          if(!(pid.Kp == 0.0 && pid.Ki == 0.0 && pid.Kd == 0.0))
+          {
+            // Calculate the steer value if this is not the first set of iteration
+            steer_value = -(pid.Kp * pid.p_error) - (pid.Ki * pid.i_error) - (pid.Kd * pid.d_error);
+
+            // If the steer_value is nan for some reason, set it to be the
+            // opposite of the cross track error
+            if(isnan(steer_value))
+            {
+              steer_value = -cte;
+            }
+          }
+          else
+          {
+            steer_value = -cte;
+          }
+
+          // Bound the steering angle between -1 and +1
+          if(steer_value < -1)
+          {
+            steer_value = -0.5;
+          }
+          else if(steer_value > 1)
+          {
+            steer_value = 0.5;
+          }
 
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = 0.15;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);

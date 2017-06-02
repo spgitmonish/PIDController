@@ -8,6 +8,10 @@
 #define PID_H
 
 #define DEBUG 1
+#define TWIDDLE 0
+#define SGD 1
+
+using namespace std;
 
 class PID
 {
@@ -43,9 +47,23 @@ private:
   // Counter which keeps track of the number of steps
   int steps_counter;
 
+  // Variable to keep track of the sum of cross track errors
+  double sum_cte;
+
+#if SGD
+  // Vector which keeps track of the steering angle expected 'y'
+  vector<double> sgd_y;
+
+  // Vector of vectors of the errors calculated
+  vector<vector<double>> sgd_h_x;
+#endif
+
   // Function which uses the twiddle algorithm to calculate the coefficients
   // for the respective components using the passed in cross track error
   void Twiddle(double cte);
+
+  // Function which calculates the coefficients using SGD
+  void StochasticGradientDescent(void);
 };
 
 #endif /* PID_H */

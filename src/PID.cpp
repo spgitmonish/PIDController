@@ -26,6 +26,9 @@ void PID::Init(double Kp_to_set, double Ki_to_set, double Kd_to_set)
 
   // Set the steps counter to 0
   steps_counter = 0;
+
+  // Set the sum of cte to 0.0
+  sum_cte = 0.0;
 }
 
 // Updates the PID error variables given cross track error
@@ -38,17 +41,31 @@ void PID::UpdateError(double cte)
     prev_cte = cte;
   }
 
+  // Update the sum of cte
+  sum_cte += cte;
+
   // Update the propotional component error(Set to the current cross track error)
   p_error = cte;
 
   // Update the integation component error(Sum of the cross track errors)
-  i_error += cte;
+  i_error = sum_cte;
 
   // Update the differentiation component error(Difference of current & previous)
   d_error = cte - prev_cte;
 
   // Store the previous cte for next iteration
   prev_cte = cte;
+
+#if SGD
+  // Push back the expected steering angle
+  sgd_y.push_back(cte);
+
+  // Create vector for 'x' values in h(x)
+  vector<double> x_values{p_error, i_error, d_error};
+
+  // Push the vector into the vector of vectors
+  sgd_h_x.push_back(x_values);
+#endif
 }
 
 // Calculates the total PID error
@@ -57,7 +74,8 @@ double PID::TotalError(double cte)
   // Variable to store the total error after calculating the coefficients
   double total_error;
 
-  if(steps_counter == 200)
+#if TWIDDLE
+  if(steps_counter == 50)
   {
     // Update the individual error components
     UpdateError(cte);
@@ -75,6 +93,32 @@ double PID::TotalError(double cte)
     cout << "TE: " << total_error << endl;
   #endif
   }
+#elif SGD
+
+  // Call update error function with the latest cte
+  UpdateError(cte);
+
+  // If the step count is equal to 100 or if cross track error switches on us
+  if(steps_counter == 1000)
+  {
+    // Call the SGD algorithm to calculate the coefficients
+    StochasticGradientDescent();
+
+    // Reset the counter to 0
+    steps_counter = 0;
+
+    // Reset the variables involved and the vectors
+    sgd_y.clear();
+    sgd_h_x.clear();
+
+    // Calculate the total error with the calculated coefficients
+    total_error = -(Kp * p_error) - (Ki * i_error) - (Kd * d_error);
+
+  #if DEBUG
+    cout << "TE: " << total_error << endl;
+  #endif
+  }
+#endif
 
   // Increment the counter
   steps_counter += 1;
@@ -198,4 +242,51 @@ void PID::Twiddle(double cte)
 #if DEBUG
   cout << "After(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
 #endif
+}
+
+// Function which calculates the coefficients using SGD
+void PID::StochasticGradientDescent(void)
+{
+  // Vector of inital coefficients
+  vector<double> coefficients{Kp, Ki, Kd};
+
+  // Learning rate and number of epochs
+  double alpha = 0.001;
+  int epochs = 50;
+
+  for(size_t epoch = 0; epoch < epochs; epoch++)
+  {
+    // Sum of squared errors
+    double sum_of_sq_error = 0.0;
+
+    // Calculate the error for each of the cases in the "training set"
+    for(size_t index = 0; index < sgd_y.size(); index++)
+    {
+      // Predicted value
+      double predicted_steer = coefficients[0] * sgd_h_x[index][0] + \
+                               coefficients[1] * sgd_h_x[index][1] + \
+                               coefficients[2] * sgd_h_x[index][2];
+
+      // Error between the expected value and actual value
+      double error = predicted_steer - sgd_y[index];
+
+      // Add up the sum of the squared errors
+      sum_of_sq_error += error * error;
+
+      // Update each of the coefficients for this sample in the epoch
+      for(size_t coeff_index = 0; coeff_index < coefficients.size(); coeff_index++)
+      {
+        coefficients[coeff_index] = coefficients[coeff_index] - alpha * error * sgd_h_x[index][coeff_index];
+      }
+    }
+  }
+
+#if DEBUG
+  cout << "After(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
+#endif
+
+  // Update the coefficients of the PID object after SGD
+  Kp = coefficients[0];
+  Ki = coefficients[1];
+  Kd = coefficients[2];
 }
