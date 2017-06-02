@@ -23,6 +23,9 @@ void PID::Init(double Kp_to_set, double Ki_to_set, double Kd_to_set)
   // Set the previous cross track error to the maximum possible value
   // This is just during initalization
   prev_cte = DBL_MAX;
+
+  // Set the steps counter to 0
+  steps_counter = 0;
 }
 
 // Updates the PID error variables given cross track error
@@ -43,6 +46,9 @@ void PID::UpdateError(double cte)
 
   // Update the differentiation component error(Difference of current & previous)
   d_error = cte - prev_cte;
+
+  // Store the previous cte for next iteration
+  prev_cte = cte;
 }
 
 // Calculates the total PID error
@@ -51,18 +57,27 @@ double PID::TotalError(double cte)
   // Variable to store the total error after calculating the coefficients
   double total_error;
 
-  // Use the twiddle algorithm to calculate the best coefficients
-  Twiddle(cte);
+  if(steps_counter == 200)
+  {
+    // Update the individual error components
+    UpdateError(cte);
 
-  // Update the individual error components
-  UpdateError(cte);
+    // Use the twiddle algorithm to calculate the best coefficients
+    Twiddle(cte);
 
-  // Calculate the total error with the calculated coefficients
-  total_error = -(Kp * p_error) - (Ki * i_error) - (Kd * d_error);
+    // Reinitialze the counter
+    steps_counter = 0;
 
-#if DEBUG
-  cout << "TE: " << total_error << endl;
-#endif
+    // Calculate the total error with the calculated coefficients
+    total_error = -(Kp * p_error) - (Ki * i_error) - (Kd * d_error);
+
+  #if DEBUG
+    cout << "TE: " << total_error << endl;
+  #endif
+  }
+
+  // Increment the counter
+  steps_counter += 1;
 
   // Return the new error calculated
   return total_error;
@@ -83,7 +98,7 @@ void PID::Twiddle(double cte)
 #endif
 
   // Initialize the vector of potential changes to the coefficients
-  vector<double> potential_coefficients{1.0, 1.0, 1.0};
+  vector<double> potential_coefficients{0.1, 0.1, 0.1};
 
   // Sum of the potential coefficient changes
   // NOTE: The accumulate function from the std algorithm library is used
@@ -105,7 +120,10 @@ void PID::Twiddle(double cte)
 #endif
 
   // Twiddle algorithm goes till the sum of the potential is less than a threshold
-  while(sum_of_pot_coeffs > 0.2)
+  //while(sum_of_pot_coeffs > 0.2)
+  sum_of_pot_coeffs = 0.0;
+
+  while(sum_of_pot_coeffs < 15)
   {
     // Go through one component's coefficient at a time
     for(size_t coeff_index = 0; coeff_index < coefficients.size(); coeff_index++)
@@ -118,6 +136,10 @@ void PID::Twiddle(double cte)
       double new_error = -(coefficients[0] * p_error) \
                          -(coefficients[1] * i_error) \
                          -(coefficients[2] * d_error);
+      #if DEBUG
+       cout << "Coeff[" << coeff_index << "]: " << coefficients[coeff_index] << endl;
+       cout << "NE: " << new_error << endl;
+      #endif
 
       // Check if the change in the coefficient's value is better than
       // previous best error
@@ -162,10 +184,10 @@ void PID::Twiddle(double cte)
     }
 
     // Recalculate the sum of potential_coefficients values
-    sum_of_pot_coeffs = accumulate(potential_coefficients.begin(),
+    /*sum_of_pot_coeffs = accumulate(potential_coefficients.begin(),
                                    potential_coefficients.end(),
-                                   0.0);
-
+                                   0.0);*/
+    sum_of_pot_coeffs += 1;
   }
 
   // Update the respective coefficients values after the twiddle calculation

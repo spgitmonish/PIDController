@@ -7,7 +7,7 @@
 #ifndef PID_H
 #define PID_H
 
-#define DEBUG 0
+#define DEBUG 1
 
 class PID
 {
@@ -39,6 +39,9 @@ public:
 private:
   // Private variable which keeps track of the previous cross track error
   double prev_cte;
+
+  // Counter which keeps track of the number of steps
+  int steps_counter;
 
   // Function which uses the twiddle algorithm to calculate the coefficients
   // for the respective components using the passed in cross track error
