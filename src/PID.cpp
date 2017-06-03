@@ -29,6 +29,10 @@ void PID::Init(double Kp_to_set, double Ki_to_set, double Kd_to_set)
 
   // Set the sum of cte to 0.0
   sum_cte = 0.0;
+
+#if TWIDDLE
+  total_error = 0.0;
+#endif
 }
 
 // Updates the PID error variables given cross track error
@@ -56,6 +60,7 @@ void PID::UpdateError(double cte)
   // Store the previous cte for next iteration
   prev_cte = cte;
 
+// Variables related to Stochastic Gradient Descent
 #if SGD
   // Push back the expected steering angle
   sgd_y.push_back(cte);
@@ -66,31 +71,35 @@ void PID::UpdateError(double cte)
   // Push the vector into the vector of vectors
   sgd_h_x.push_back(x_values);
 #endif
+
+// Variables related to Twiddle algorithm
+#if TWIDDLE
+  // Set initial error to 0.0
+  total_error = 0.0;
+
+  // Set best error to a very high value
+  best_error = DBL_MAX;
+
+  // Set up the potential coefficient values to change
+  potential_coefficients.push_back(0.1);
+  potential_coefficients.push_back(0.0001);
+  potential_coefficients.push_back(0.1);
+
+  // Always start with the first coefficient
+  current_coefficient = 0;
+
+  // Set the enum to indicate start
+  coeff_update = START;
+#endif
 }
 
 // Calculates the total PID error
 void PID::TotalError(double cte)
 {
-#if TWIDDLE
-  if(steps_counter == 50)
-  {
-    // Update the individual error components
-    UpdateError(cte);
-
-    // Use the twiddle algorithm to calculate the best coefficients
-    Twiddle(cte);
-
-    // Reinitialze the counter
-    steps_counter = 0;
-
-  #if DEBUG
-    cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
-  #endif
-  }
-#elif SGD
   // Call update error function with the latest cte
   UpdateError(cte);
 
+#if SGD
   // If the step count is equal to 100 or if cross track error switches on us
   if(steps_counter == 100)
   {
@@ -110,129 +119,37 @@ void PID::TotalError(double cte)
     cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
   #endif
   }
+#elif TWIDDLE
+  if(steps_counter >= 50)
+  {
+    // Accumulate error at the rate of power of two of cte because error hasn't
+    // been accounted for in the iterations, to allow time for converging
+    total_error += pow(cte, 2);
+  }
+  if(steps_counter == 100)
+  {
+    // Use the twiddle algorithm to calculate the best coefficients
+    Twiddle(cte);
+
+    // Reset the variables involved
+    prev_cte = DBL_MAX;
+    sum_cte = 0.0;
+    total_error = 0.0;
+
+    // Reinitialze the counter
+    steps_counter = 0;
+
+  #if DEBUG
+    cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
+  #endif
+  }
 #endif
 
   // Increment the counter
   steps_counter += 1;
 }
 
-// Function which uses the twiddle algorithm to calculate the coefficients
-// for the respective components using the passed in cross track error
-void PID::Twiddle(double cte)
-{
-  // Vector of coefficients of the respective components
-  // NOTE: For the first calculation all the components are set 0.0 because
-  //       when the Init() function is called from main for the 1st time all
-  //       coefficients are set to 0.0
-  vector<double> coefficients{Kp, Ki, Kd};
-
-#if DEBUG_VERBOSE
-  cout << "Before(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
-#endif
-
-  // Initialize the vector of potential changes to the coefficients
-  vector<double> potential_coefficients{0.1, 0.1, 0.1};
-
-  // Sum of the potential coefficient changes
-  // NOTE: The accumulate function from the std algorithm library is used
-  double sum_of_pot_coeffs = accumulate(potential_coefficients.begin(),
-                                        potential_coefficients.end(),
-                                        0.0);
-
-#if DEBUG_VERBOSE
-  cout << "SoPC: " << sum_of_pot_coeffs << endl;
-#endif
-
-  // Variable to store the best error calculated
-  double best_error = -(coefficients[0] * p_error) \
-                      -(coefficients[1] * i_error) \
-                      -(coefficients[2] * d_error);
-
-#if DEBUG_VERBOSE
-  cout << "BE: " << best_error << endl;
-#endif
-
-  // Twiddle algorithm goes till the sum of the potential is less than a threshold
-  //while(sum_of_pot_coeffs > 0.2)
-  sum_of_pot_coeffs = 0.0;
-
-  while(sum_of_pot_coeffs < 15)
-  {
-    // Go through one component's coefficient at a time
-    for(size_t coeff_index = 0; coeff_index < coefficients.size(); coeff_index++)
-    {
-      // Increment the coefficient's value by the respective
-      // potential_coefficients value
-      coefficients[coeff_index] += potential_coefficients[coeff_index];
-
-      // Calculate the error with this change in the coefficient's value
-      double new_error = -(coefficients[0] * p_error) \
-                         -(coefficients[1] * i_error) \
-                         -(coefficients[2] * d_error);
-      #if DEBUG_VERBOSE
-       cout << "Coeff[" << coeff_index << "]: " << coefficients[coeff_index] << endl;
-       cout << "NE: " << new_error << endl;
-      #endif
-
-      // Check if the change in the coefficient's value is better than
-      // previous best error
-      if(new_error < best_error)
-      {
-        // Update the best error variable
-        best_error = new_error;
-
-        // Change the potential_coefficients's value by multiplying 1.1
-        potential_coefficients[coeff_index] *= 1.1;
-      }
-      else
-      {
-        // Reduce the coefficient's value by twice
-        // the potential_coefficients's value as the coefficient's value was
-        // incremented at the beginning of the loop
-        coefficients[coeff_index] -= 2.0 * potential_coefficients[coeff_index];\
-
-        // Calculate the error with this change in the coefficient's value
-        new_error = -(coefficients[0] * p_error) \
-                    -(coefficients[1] * i_error) \
-                    -(coefficients[2] * d_error);
-
-        // Check if the decrease in the coefficient's value leads to better error
-        if(new_error < best_error)
-        {
-          // Update the best error variable
-          best_error = new_error;
-
-          // Change the potential_coefficients's value by multiplying 1.1
-          potential_coefficients[coeff_index] *= 1.1;
-        }
-        else
-        {
-          // Go back to the original value of the coefficient
-          coefficients[coeff_index] += potential_coefficients[coeff_index];
-
-          // Change the potential_coefficients's value by multiplying 0.9
-          potential_coefficients[coeff_index] *= 0.9;
-        }
-      }
-    }
-
-    // Recalculate the sum of potential_coefficients values
-    /*sum_of_pot_coeffs = accumulate(potential_coefficients.begin(),
-                                   potential_coefficients.end(),
-                                   0.0);*/
-    sum_of_pot_coeffs += 1;
-  }
-
-  // Update the respective coefficients values after the twiddle calculation
-  Kp = coefficients[0];
-  Ki = coefficients[1];
-  Kd = coefficients[2];
-
-#if DEBUG_VERBOSE
-  cout << "After(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
-#endif
-}
-
+#if SGD
 // Function which calculates the coefficients using SGD
 void PID::StochasticGradientDescent(void)
 {
@@ -291,3 +208,148 @@ void PID::StochasticGradientDescent(void)
   Ki = coefficients[1];
   Kd = coefficients[2];
 }
+#endif
+
+#if TWIDDLE
+// Function which uses the twiddle algorithm to calculate the coefficients
+// for the respective components using the passed in cross track error
+void PID::Twiddle(double cte)
+{
+  // Calculate the sum of potential changes, this variable decides if we
+  // need to stop twiddling
+  double sum_of_pot_coefficients = accumulate(potential_coefficients.begin(),
+                                              potential_coefficients.end(),
+                                              0.0);
+
+  // Check if the sum of potential changes is very close to 0, that means, starting
+  // from 1, we went all the way down to almost zero
+  if(sum_of_pot_coefficients > 0.000001)
+  {
+    // Get the latest error
+    double new_error = total_error;
+
+    if(coeff_update == UP) // The coefficient value was incremented
+    {
+      // Check if the previous update to the coefficient improved the error
+      if(new_error < best_error)
+      {
+        // New best error
+        best_error = new_error;
+
+        // Indicate the multiplier update was applied to this potential coefficient
+        potential_coefficients[current_coefficient] *= 1.1;
+
+        // Set the enum to indicate higher factor multiplication was applied
+        coeff_update = MUL_1_1;
+
+        // Move onto the next coefficient as the increment to the previous coefficient
+        // did lead to an improvement in the error
+        current_coefficient = (current_coefficient + 1) % 3;
+
+        // Return from this function
+        return;
+      }
+      else
+      {
+        // The increment for this coefficient didn't lead to an improvement
+        if(current_coefficient == 0)
+        {
+          // Decrement Kp
+          Kp -= 2 * potential_coefficients[current_coefficient];
+        }
+        else if(current_coefficient == 1)
+        {
+          // Decrement Ki
+          Ki -= 2 * potential_coefficients[current_coefficient];
+        }
+        else
+        {
+          // Decrement Kd
+          Kd -= 2 * potential_coefficients[current_coefficient];
+        }
+
+        // Mark a flag which indicates that the decrement needs to be validated
+        coeff_update = DOWN;
+
+        // Return at this point
+        return;
+      }
+    }
+    else if(coeff_update == DOWN) // The coefficient value was reduced
+    {
+      // Check if the decrement to the coefficient improved the error
+      if(new_error < best_error)
+      {
+        // New best error
+        best_error = new_error;
+
+        // Indicate the multiplier update was applied to this potential coefficient
+        potential_coefficients[current_coefficient] *= 1.1;
+
+        // Set the enum to indicate higher factor multiplication was applied
+        coeff_update = MUL_1_1;
+
+        // Move onto the next coefficient as the update to the previous coefficient
+        // did lead to an improvement in the error
+        current_coefficient = (current_coefficient + 1) % 3;
+
+        // Return from this function
+        return;
+      }
+      else
+      {
+        // Go back the original values by incrementing
+        if(current_coefficient == 0)
+        {
+          // Incemement Kp
+          Kp += potential_coefficients[current_coefficient];
+        }
+        else if(current_coefficient == 1)
+        {
+          // Incemenent Ki
+          Ki += potential_coefficients[current_coefficient];
+        }
+        else
+        {
+          // Increment Kd
+          Kd += potential_coefficients[current_coefficient];
+        }
+
+        // Multiply big a smaller factor
+        potential_coefficients[current_coefficient] *= 0.9;
+
+        // Set the enum to indicate smaller factor multiplication was applied
+        coeff_update = MUL_0_9;
+
+        // Move onto the next coefficient as the update to the previous coefficient
+        // did lead to an improvement in the error
+        current_coefficient = (current_coefficient + 1) % 3;
+
+        // Return from this function
+        return;
+      }
+    }
+    else // The update process must have started or a factor multiplication was applied
+    {
+      if(current_coefficient == 0)
+      {
+        // Increment Kp
+        Kp += potential_coefficients[current_coefficient];
+      }
+      else if(current_coefficient == 1)
+      {
+        // Increment Ki
+        Ki += potential_coefficients[current_coefficient];
+      }
+      else
+      {
+        // Increment Kd
+        Kd += potential_coefficients[current_coefficient];
+      }
+
+      // Indicate that the coefficients were incremented
+      coeff_update = UP;
+    }
+  }
+}
+#endif

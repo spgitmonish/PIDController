@@ -9,10 +9,14 @@
 
 #define DEBUG 1
 #define DEBUG_VERBOSE (DEBUG && 0)
-#define TWIDDLE 0
-#define SGD 1
+#define TWIDDLE 1
+#define SGD 0
 
 using namespace std;
+
+// Enum to indicate whether the coefficients were moved up or down and need
+// to be validated accordingly
+enum coefficient_update {START, UP, DOWN, MUL_1_1, MUL_0_9};
 
 class PID
 {
@@ -56,14 +60,30 @@ private:
 
   // Vector of vectors of the errors calculated
   vector<vector<double>> sgd_h_x;
+
+  // Function which calculates the coefficients using SGD
+  void StochasticGradientDescent(void);
 #endif
+#if TWIDDLE
+  // Private variable to keep track of the total error accumulated
+  double total_error;
+
+  // Variable to store the best error(if it changes) for twiddle call
+  double best_error;
+
+  // Enum variable for setting the correct update to do
+  coefficient_update coeff_update;
+
+  // Variable which tracks potential changes to apply to the coefficients
+  vector<double> potential_coefficients;
+
+  // Current coefficient change to be tested
+  int current_coefficient;
 
   // Function which uses the twiddle algorithm to calculate the coefficients
   // for the respective components using the passed in cross track error
   void Twiddle(double cte);
-
-  // Function which calculates the coefficients using SGD
-  void StochasticGradientDescent(void);
+#endif
 };
 
 #endif /* PID_H */
