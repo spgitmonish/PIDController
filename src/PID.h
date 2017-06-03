@@ -40,7 +40,7 @@ public:
   void UpdateError(double cte);
 
   // Calculates the total PID error
-  double TotalError(double cte);
+  void TotalError(double cte);
 private:
   // Private variable which keeps track of the previous cross track error
   double prev_cte;
@@ -50,7 +50,6 @@ private:
 
   // Variable to keep track of the sum of cross track errors
   double sum_cte;
-
 #if SGD
   // Vector which keeps track of the steering angle expected 'y'
   vector<double> sgd_y;

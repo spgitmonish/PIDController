@@ -69,44 +69,31 @@ int main()
           */
           pid.TotalError(cte);
 
-          /*if(!(pid.Kp == 0.0 && pid.Ki == 0.0 && pid.Kd == 0.0))
-          {
-            // Calculate the steer value if this is not the first set of iteration
-            steer_value = -(pid.Kp * pid.p_error) - (pid.Ki * pid.i_error) - (pid.Kd * pid.d_error);
-
-            // If the steer_value is nan for some reason, set it to be the
-            // opposite of the cross track error
-            if(isnan(steer_value))
-            {
-              steer_value = -cte;
-            }
-          }
-          else
-          {
-            steer_value = -cte;
-          }*/
-
-          // Calculate the steer value if this is not the first set of iteration
+          // Calculate the steer value
           steer_value = -(pid.Kp * pid.p_error) - (pid.Ki * pid.i_error) - (pid.Kd * pid.d_error);
 
-          // Bound the steering angle between -1 and +1
+          // If the steering angle is beyond +/- 1 limit the steering angle
+          // to +/- 0.5 to prevent sharp turns
           if(steer_value < -1)
           {
-            steer_value = -1;
+            steer_value = -0.5;
           }
           else if(steer_value > 1)
           {
-            steer_value = 1;
+            steer_value = 0.5;
           }
 
-          // DEBUG
+        #if DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+        #endif
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
           msgJson["throttle"] = 0.15;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
+        #if DEBUG
           std::cout << msg << std::endl;
+        #endif
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       }

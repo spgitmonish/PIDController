@@ -69,11 +69,8 @@ void PID::UpdateError(double cte)
 }
 
 // Calculates the total PID error
-double PID::TotalError(double cte)
+void PID::TotalError(double cte)
 {
-  // Variable to store the total error after calculating the coefficients
-  double total_error;
-
 #if TWIDDLE
   if(steps_counter == 50)
   {
@@ -86,11 +83,8 @@ double PID::TotalError(double cte)
     // Reinitialze the counter
     steps_counter = 0;
 
-    // Calculate the total error with the calculated coefficients
-    total_error = -(Kp * p_error) - (Ki * i_error) - (Kd * d_error);
-
   #if DEBUG
-    cout << "TE: " << total_error << endl;
+    cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
   #endif
   }
 #elif SGD
@@ -112,20 +106,14 @@ double PID::TotalError(double cte)
     sgd_y.clear();
     sgd_h_x.clear();
 
-    // Calculate the total error with the calculated coefficients
-    total_error = -(Kp * p_error) - (Ki * i_error) - (Kd * d_error);
-
   #if DEBUG
-    cout << "TE: " << total_error << endl;
+    cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
   #endif
   }
 #endif
 
   // Increment the counter
   steps_counter += 1;
-
-  // Return the new error calculated
-  return total_error;
 }
 
 // Function which uses the twiddle algorithm to calculate the coefficients
