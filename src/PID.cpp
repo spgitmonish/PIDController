@@ -81,9 +81,9 @@ void PID::UpdateError(double cte)
   best_error = DBL_MAX;
 
   // Set up the potential coefficient values to change
-  potential_coefficients.push_back(0.1);
+  potential_coefficients.push_back(0.015);
   potential_coefficients.push_back(0.0001);
-  potential_coefficients.push_back(0.1);
+  potential_coefficients.push_back(0.15);
 
   // Always start with the first coefficient
   current_coefficient = 0;
