@@ -94,12 +94,11 @@ double PID::TotalError(double cte)
   #endif
   }
 #elif SGD
-
   // Call update error function with the latest cte
   UpdateError(cte);
 
   // If the step count is equal to 100 or if cross track error switches on us
-  if(steps_counter == 1000)
+  if(steps_counter == 100)
   {
     // Call the SGD algorithm to calculate the coefficients
     StochasticGradientDescent();
@@ -108,6 +107,8 @@ double PID::TotalError(double cte)
     steps_counter = 0;
 
     // Reset the variables involved and the vectors
+    prev_cte = DBL_MAX;
+    sum_cte = 0.0;
     sgd_y.clear();
     sgd_h_x.clear();
 
@@ -137,7 +138,7 @@ void PID::Twiddle(double cte)
   //       coefficients are set to 0.0
   vector<double> coefficients{Kp, Ki, Kd};
 
-#if DEBUG
+#if DEBUG_VERBOSE
   cout << "Before(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
 #endif
 
@@ -150,7 +151,7 @@ void PID::Twiddle(double cte)
                                         potential_coefficients.end(),
                                         0.0);
 
-#if DEBUG
+#if DEBUG_VERBOSE
   cout << "SoPC: " << sum_of_pot_coeffs << endl;
 #endif
 
@@ -159,7 +160,7 @@ void PID::Twiddle(double cte)
                       -(coefficients[1] * i_error) \
                       -(coefficients[2] * d_error);
 
-#if DEBUG
+#if DEBUG_VERBOSE
   cout << "BE: " << best_error << endl;
 #endif
 
@@ -180,7 +181,7 @@ void PID::Twiddle(double cte)
       double new_error = -(coefficients[0] * p_error) \
                          -(coefficients[1] * i_error) \
                          -(coefficients[2] * d_error);
-      #if DEBUG
+      #if DEBUG_VERBOSE
        cout << "Coeff[" << coeff_index << "]: " << coefficients[coeff_index] << endl;
        cout << "NE: " << new_error << endl;
       #endif
@@ -239,7 +240,7 @@ void PID::Twiddle(double cte)
   Ki = coefficients[1];
   Kd = coefficients[2];
 
-#if DEBUG
+#if DEBUG_VERBOSE
   cout << "After(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
 #endif
 }
@@ -251,8 +252,12 @@ void PID::StochasticGradientDescent(void)
   vector<double> coefficients{Kp, Ki, Kd};
 
   // Learning rate and number of epochs
-  double alpha = 0.001;
-  int epochs = 50;
+  double alpha = 0.0003;
+  int epochs = 200;
+
+#if DEBUG_VERBOSE
+  cout << "Before(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
+#endif
 
   for(size_t epoch = 0; epoch < epochs; epoch++)
   {
@@ -267,8 +272,16 @@ void PID::StochasticGradientDescent(void)
                                coefficients[1] * sgd_h_x[index][1] + \
                                coefficients[2] * sgd_h_x[index][2];
 
+    #if DEBUG_VERBOSE
+      cout << "PS: " << predicted_steer << endl;
+    #endif
+
       // Error between the expected value and actual value
       double error = predicted_steer - sgd_y[index];
+
+    #if DEBUG_VERBOSE
+      cout << "Err: " << error << endl;
+    #endif
 
       // Add up the sum of the squared errors
       sum_of_sq_error += error * error;
@@ -281,7 +294,7 @@ void PID::StochasticGradientDescent(void)
     }
   }
 
-#if DEBUG
+#if DEBUG_VERBOSE
   cout << "After(Kp: " << coefficients[0] << ", Ki: " << coefficients[1] << ", Kd: " << coefficients[2] << ")" <<endl;
 #endif
 

@@ -8,6 +8,7 @@
 #define PID_H
 
 #define DEBUG 1
+#define DEBUG_VERBOSE (DEBUG && 0)
 #define TWIDDLE 0
 #define SGD 1
 

@@ -68,7 +68,8 @@ int main()
           * another PID controller to control the speed!
           */
           pid.TotalError(cte);
-          if(!(pid.Kp == 0.0 && pid.Ki == 0.0 && pid.Kd == 0.0))
+
+          /*if(!(pid.Kp == 0.0 && pid.Ki == 0.0 && pid.Kd == 0.0))
           {
             // Calculate the steer value if this is not the first set of iteration
             steer_value = -(pid.Kp * pid.p_error) - (pid.Ki * pid.i_error) - (pid.Kd * pid.d_error);
@@ -83,16 +84,19 @@ int main()
           else
           {
             steer_value = -cte;
-          }
+          }*/
+
+          // Calculate the steer value if this is not the first set of iteration
+          steer_value = -(pid.Kp * pid.p_error) - (pid.Ki * pid.i_error) - (pid.Kd * pid.d_error);
 
           // Bound the steering angle between -1 and +1
           if(steer_value < -1)
           {
-            steer_value = -0.5;
+            steer_value = -1;
           }
           else if(steer_value > 1)
           {
-            steer_value = 0.5;
+            steer_value = 1;
           }
 
           // DEBUG
