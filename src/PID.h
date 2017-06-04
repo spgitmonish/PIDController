@@ -9,8 +9,14 @@
 
 #define DEBUG 1
 #define DEBUG_VERBOSE (DEBUG && 0)
-#define TWIDDLE 1
-#define SGD 0
+#define TWIDDLE 0
+#define SGD 1
+
+// Make sure a compile time assert is thrown to prevent both algorithms from
+// being turned ON at the same time
+#if TWIDDLE && SGD
+  #error "Only one of the algorithm flags can be enabled"
+#endif
 
 using namespace std;
 
