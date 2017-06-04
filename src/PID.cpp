@@ -31,7 +31,22 @@ void PID::Init(double Kp_to_set, double Ki_to_set, double Kd_to_set)
   sum_cte = 0.0;
 
 #if TWIDDLE
+  // Set the initial error to 0.0
   total_error = 0.0;
+
+  // Set best error to a very high value
+  best_error = DBL_MAX;
+
+  // Set up the potential coefficient values to change
+  potential_coefficients.push_back(0.125);
+  potential_coefficients.push_back(0.0001);
+  potential_coefficients.push_back(0.30);
+
+  // Always start with the first coefficient
+  current_coefficient = 0;
+
+  // Set the enum to indicate start
+  coeff_update = START;
 #endif
 }
 
@@ -71,26 +86,6 @@ void PID::UpdateError(double cte)
   // Push the vector into the vector of vectors
   sgd_h_x.push_back(x_values);
 #endif
-
-// Variables related to Twiddle algorithm
-#if TWIDDLE
-  // Set initial error to 0.0
-  total_error = 0.0;
-
-  // Set best error to a very high value
-  best_error = DBL_MAX;
-
-  // Set up the potential coefficient values to change
-  potential_coefficients.push_back(0.015);
-  potential_coefficients.push_back(0.0001);
-  potential_coefficients.push_back(0.15);
-
-  // Always start with the first coefficient
-  current_coefficient = 0;
-
-  // Set the enum to indicate start
-  coeff_update = START;
-#endif
 }
 
 // Calculates the total PID error
@@ -120,13 +115,13 @@ void PID::TotalError(double cte)
   #endif
   }
 #elif TWIDDLE
-  if(steps_counter >= 50)
+  if(steps_counter >= 25)
   {
     // Accumulate error at the rate of power of two of cte because error hasn't
     // been accounted for in the iterations, to allow time for converging
     total_error += pow(cte, 2);
   }
-  if(steps_counter == 100)
+  if(steps_counter == 50)
   {
     // Use the twiddle algorithm to calculate the best coefficients
     Twiddle(cte);
@@ -220,6 +215,8 @@ void PID::Twiddle(double cte)
   double sum_of_pot_coefficients = accumulate(potential_coefficients.begin(),
                                               potential_coefficients.end(),
                                               0.0);
+
+  cout << current_coefficient << endl;
 
   // Check if the sum of potential changes is very close to 0, that means, starting
   // from 1, we went all the way down to almost zero
