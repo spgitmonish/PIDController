@@ -39,7 +39,11 @@ int main()
 
   // Initialize the pid variable with the values for the constants of
   // the respective components
-  pid.Init(0.0, 0.0, 0.0);
+#if SGD
+  pid.Init(0, 0, 0);
+#elif TWIDDLE
+  pid.Init(0.125, 0.0001, 0.45);
+#endif
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {

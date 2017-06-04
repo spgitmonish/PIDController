@@ -96,7 +96,7 @@ void PID::TotalError(double cte)
 
 #if SGD
   // If the step count is equal to 100 or if cross track error switches on us
-  if(steps_counter == 100)
+  if(steps_counter == steps_threshold)
   {
     // Call the SGD algorithm to calculate the coefficients
     StochasticGradientDescent();
@@ -115,13 +115,13 @@ void PID::TotalError(double cte)
   #endif
   }
 #elif TWIDDLE
-  if(steps_counter >= 25)
+  if(steps_counter >= steps_threshold / 2)
   {
     // Accumulate error at the rate of power of two of cte because error hasn't
     // been accounted for in the iterations, to allow time for converging
     total_error += pow(cte, 2);
   }
-  if(steps_counter == 50)
+  if(steps_counter == steps_threshold)
   {
     // Use the twiddle algorithm to calculate the best coefficients
     Twiddle(cte);
@@ -215,8 +215,6 @@ void PID::Twiddle(double cte)
   double sum_of_pot_coefficients = accumulate(potential_coefficients.begin(),
                                               potential_coefficients.end(),
                                               0.0);
-
-  cout << current_coefficient << endl;
 
   // Check if the sum of potential changes is very close to 0, that means, starting
   // from 1, we went all the way down to almost zero

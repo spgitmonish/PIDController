@@ -54,12 +54,16 @@ private:
 
   // Variable to keep track of the sum of cross track errors
   double sum_cte;
+
 #if SGD
   // Vector which keeps track of the steering angle expected 'y'
   vector<double> sgd_y;
 
   // Vector of vectors of the errors calculated
   vector<vector<double>> sgd_h_x;
+
+  // Constant for determining number of steps before SGD kicks back in
+  const int steps_threshold = 100;
 
   // Function which calculates the coefficients using SGD
   void StochasticGradientDescent(void);
@@ -79,6 +83,9 @@ private:
 
   // Current coefficient change to be tested
   int current_coefficient;
+
+  // Constant for determining number of steps before Twiddle kicks back in
+  const int steps_threshold = 50;
 
   // Function which uses the twiddle algorithm to calculate the coefficients
   // for the respective components using the passed in cross track error
