@@ -35,17 +35,23 @@ int main()
 {
   uWS::Hub h;
 
-  PID pid;
+  // PID object for controlling steering angle
+  PID pidSteer;
+
+  // PID object for controlling throttle
+  PID pidThrottle;
 
   // Initialize the pid variable with the values for the constants of
   // the respective components
 #if SGD
-  pid.Init(0, 0, 0);
+  pidSteer.Init(0, 0, 0, STEERING);
+  pidThrottle.Init(0, 0, 0, THROTTLE);
 #elif TWIDDLE
-  pid.Init(0.10, 0.0001, 0.75);
+  pidSteer.Init(0.10, 0.0001, 0.75, STEERING);
+  pidThrottle.Init(0.07, 0.0001, 0.5, THROTTLE);
 #endif
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
+  h.onMessage([&pidSteer, &pidThrottle](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -64,12 +70,15 @@ int main()
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
           double steer_value;
+          double throttle_value;
 
           // Update the total error for this iteration
-          pid.TotalError(cte);
+          pidSteer.TotalError(cte);
 
           // Calculate the steer value
-          steer_value = -(pid.Kp * pid.p_error) - (pid.Ki * pid.i_error) - (pid.Kd * pid.d_error);
+          steer_value = - (pidSteer.Kp * pidSteer.p_error) \
+                        - (pidSteer.Ki * pidSteer.i_error) \
+                        - (pidSteer.Kd * pidSteer.d_error);
 
           // If the steering angle is beyond +/- 1 limit the steering angle
           // to +/- 0.5 to prevent sharp turns
@@ -82,13 +91,47 @@ int main()
             steer_value = 0.5;
           }
 
-        #if DEBUG_VERBOSE
+          // If the cross track error is small then the steering left to do is
+          // small, so if the steering angle is high, the target speed needs to
+          // be lower. So Speed is the opposite of the steering angle, larger the
+          // angle the lower the speed needs to be. Assume the target speed is
+          // 15 miles an hour.
+          cout << "S: " << speed << endl;
+
+          double target_speed = speed - 30 *(1.-abs(steer_value)) + 20;
+
+          cout << "T: " << target_speed << endl;
+
+          // Update the total error for this iteration
+          pidThrottle.TotalError(speed - target_speed);
+
+          // Calculate the throttle value
+          throttle_value =  pidThrottle.Kp * pidThrottle.p_error + \
+                            pidThrottle.Ki * pidThrottle.i_error + \
+                            pidThrottle.Kd * pidThrottle.d_error;
+
+        #if DEBUG_VERBOSE && 0
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
         #endif
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.15;
+          //msgJson["throttle"] = 0.15;
+          msgJson["throttle"] = -throttle_value;
+          /*if(throttle_value < 0.099)
+          {
+            msgJson["throttle"] = throttle_value * 10;
+          }
+          else if((throttle_value >= 0.25) && (throttle_value <= 0.3))
+          {
+            // Lower the speed
+            throttle_value = 0.2;
+            msgJson["throttle"] = throttle_value;
+          }
+          else
+          {
+            msgJson["throttle"] = throttle_value;
+          }*/
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
         #if DEBUG_VERBOSE
           std::cout << msg << std::endl;
