@@ -186,6 +186,12 @@ void PID::StochasticGradientDescent(void)
       // Add up the sum of the squared errors
       sum_of_sq_error += error * error;
 
+      // If the error has converged, break, to save computation time
+      if(sum_of_sq_error < 0.00001)
+      {
+        break;
+      }
+
       // Update each of the coefficients for this sample in the epoch
       for(size_t coeff_index = 0; coeff_index < coefficients.size(); coeff_index++)
       {
