@@ -47,8 +47,8 @@ int main()
   pidSteer.Init(0, 0, 0, STEERING);
   pidThrottle.Init(0, 0, 0, THROTTLE);
 #elif TWIDDLE
-  pidSteer.Init(0.10, 0.0001, 0.75, STEERING);
-  pidThrottle.Init(0.07, 0.0001, 0.5, THROTTLE);
+  pidSteer.Init(0.05, 0.0001, 0.75, STEERING);
+  pidThrottle.Init(0.05, 0.0001, 0.75, THROTTLE);
 #endif
 
   h.onMessage([&pidSteer, &pidThrottle](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
@@ -91,47 +91,29 @@ int main()
             steer_value = 0.5;
           }
 
-          // If the cross track error is small then the steering left to do is
-          // small, so if the steering angle is high, the target speed needs to
-          // be lower. So Speed is the opposite of the steering angle, larger the
-          // angle the lower the speed needs to be. Assume the target speed is
-          // 15 miles an hour.
-          cout << "S: " << speed << endl;
-
-          double target_speed = speed - 30 *(1.-abs(steer_value)) + 20;
-
-          cout << "T: " << target_speed << endl;
+          // Create a factor which decides the speed error based on the base
+          // of 20 miles an hour. If the car is driving straight i.e. the
+          // steering angle is low then we can go faster but if the steering
+          // angle is smaller, then the car needs to slow down because the car
+          // is most likely turning.
+          double new_speed = 5 * (1.0 - abs(steer_value)) + 25;
+          double speed_error = speed - new_speed;
 
           // Update the total error for this iteration
-          pidThrottle.TotalError(speed - target_speed);
+          pidThrottle.TotalError(speed_error);
 
           // Calculate the throttle value
-          throttle_value =  pidThrottle.Kp * pidThrottle.p_error + \
-                            pidThrottle.Ki * pidThrottle.i_error + \
-                            pidThrottle.Kd * pidThrottle.d_error;
+          throttle_value =  - (pidThrottle.Kp * pidThrottle.p_error) \
+                            - (pidThrottle.Ki * pidThrottle.i_error) \
+                            - (pidThrottle.Kd * pidThrottle.d_error);
 
-        #if DEBUG_VERBOSE && 0
+        #if DEBUG_VERBOSE
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
         #endif
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          //msgJson["throttle"] = 0.15;
-          msgJson["throttle"] = -throttle_value;
-          /*if(throttle_value < 0.099)
-          {
-            msgJson["throttle"] = throttle_value * 10;
-          }
-          else if((throttle_value >= 0.25) && (throttle_value <= 0.3))
-          {
-            // Lower the speed
-            throttle_value = 0.2;
-            msgJson["throttle"] = throttle_value;
-          }
-          else
-          {
-            msgJson["throttle"] = throttle_value;
-          }*/
+          msgJson["throttle"] = throttle_value;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
         #if DEBUG_VERBOSE
           std::cout << msg << std::endl;

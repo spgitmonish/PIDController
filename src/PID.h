@@ -8,7 +8,7 @@
 #define PID_H
 
 #define DEBUG 1
-#define DEBUG_VERBOSE (DEBUG && 1)
+#define DEBUG_VERBOSE (DEBUG && 0)
 #define TWIDDLE 1
 #define SGD 0
 
@@ -96,7 +96,7 @@ private:
   int current_coefficient;
 
   // Constant for determining number of steps before Twiddle kicks back in
-  const int steps_threshold = 50;
+  const int steps_threshold = 300;
 
   // Function which uses the twiddle algorithm to calculate the coefficients
   // for the respective components using the passed in cross track error
