@@ -100,7 +100,7 @@ Here is a table from (http://smithcsrobot.weebly.com/uploads/6/0/9/5/60954939/pi
 
 ### Algorithms
 > **NOTE:**
-> I didn't have enough time to use PID to tune the speed. In my project I set the throttle variable, in main.cpp, which controls speed to a fixed value of 0.15 because a bigger throttle value causes the car to swerve a lot.
+> For the discussion below the throttle was fixed i.e. there was no separate PID for controlling the speed of the car in the simulator. The throttle (which controls speed) was fixed at 0.15.
 
 #### Stochastic Gradient Descent (SGD)
 The steering angle equation, as described earlier, is linear in nature and seemed like a perfect candidate for using SGD to tune the coefficients of the individual components of the PID controller. I actually implemented SGD first because it seemed the quickest way for me to test the PID controller.
@@ -122,12 +122,15 @@ The order of highest weights assigned by the SGD algorithm was P->D->I. Assignme
 
 The SGD algorithm can definitely be tuned to reduce the swerving by tweaking the learning rate, the number of epochs and also how often the algorithm is called.
 
+> **NOTE:**
+> SGD algorithm wasn't tested for controlling the speed of the car.
+
 #### Twiddle
 Even though the SGD algorithm for tuning the coefficients works, the swerving of the car is definitely not ideal. So, I decided to implement the twiddle algorithm as well. The twiddle algorithm in a nutshell is described really well in this link: https://martin-thoma.com/twiddle/
 
 The twiddle algorithm worked really well for this problem. The initial coefficient values to start the algorithm tuning mattered a lot in my implementation. I did have to manually play around with the initial and potential coefficient values to arrive at a working solution. The final coefficient values after 2 laps were:
 
-```Kp: 0.225, Ki: 1e-05,Kd: 0.75```
+```Kp: 0.175, Ki: 0.0001, Kd: 0.75```
 
 The algorithm definitely hovers around the initial coefficient values for "I" and "D" components but increases the "P" component from it's initial value. Having a higher value assigned for the coefficient of the "D" component stabilizes the drive significantly. This is because the future error is accounted for, so the system is less prone to overshoot. Compared to the SGD algorithm based model, the swerving is reduced a lot with the twiddle model and the drive is relatively smoother. Below is a .gif (from Twiddle.mp4 in the data/simulator) which shows a smoother drive in the 2nd lap around the same portion.   
 
@@ -139,9 +142,9 @@ The algorithm definitely hovers around the initial coefficient values for "I" an
 </p>
 
 ## Final thoughts
-1. The car can complete laps by just tuning the "P" component and disabling the "I" & D components.
-2. The "I" & "D" components lead to a smoother drive because they help with converging to the target.
-3. SGD works but doesn't lead to a smooth drive.
-4. Twiddle works perfectly for this problem, leads a way smoother drive.
+1. The car can complete laps by just tuning the "P" component and disabling the "I" & D components (With throttle fixed at 0.15).
+2. The "I" & "D" components lead to a smoother drive because they help with converging to the target value.
+3. SGD works for controlling the steering angle at a fixed throttle but doesn't lead to a smooth drive.
+4. Twiddle works perfectly for this problem, leads a way smoother drive at fixed throttle.
 5. For twiddle, hyperparameters like the initial value of the coefficients, rate of change of coefficients and how often twiddle is called can be tuned to lead to optimized performance
-5. PID control can be applied to control the speed of the vehicle as well. I wish I had more time to play around with that.
+5. PID control can be applied to control the speed of the vehicle as well and I was successfully run the PID controllers to control the steering of the car and the speed of the car.
