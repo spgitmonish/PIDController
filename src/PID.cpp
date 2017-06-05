@@ -134,9 +134,13 @@ void PID::TotalError(double cte)
     steps_counter = 0;
 
   #if DEBUG
-    if(type_of_pid == THROTTLE)
+    if(type_of_pid == STEERING)
     {
-      cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
+      cout << "Kp(S): " << Kp << ", Ki(S): " << Ki << ", Kd(S): " << Kd << endl;
+    }
+    else if(type_of_pid == THROTTLE)
+    {
+      cout << "Kp(T): " << Kp << ", Ki(T): " << Ki << ", Kd(T): " << Kd << endl;
     }
   #endif
   }
