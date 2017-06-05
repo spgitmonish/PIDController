@@ -6,7 +6,7 @@ PID::PID() {}
 PID::~PID() {}
 
 // Initializes the PID controller
-void PID::Init(double Kp_to_set, double Ki_to_set, double Kd_to_set)
+void PID::Init(double Kp_to_set, double Ki_to_set, double Kd_to_set, pid_type type_of_pid_to_set)
 {
   // Set the respective components constants
   Kp = Kp_to_set;
@@ -25,6 +25,9 @@ void PID::Init(double Kp_to_set, double Ki_to_set, double Kd_to_set)
 
   // Set the sum of cte to 0.0
   sum_cte = 0.0;
+
+  // Set the type of PID initiated
+  type_of_pid = type_of_pid_to_set;
 
 #if TWIDDLE
   // Set the initial error to 0.0
@@ -131,7 +134,10 @@ void PID::TotalError(double cte)
     steps_counter = 0;
 
   #if DEBUG
-    cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
+    if(type_of_pid == THROTTLE)
+    {
+      cout << "Kp: " << Kp << ", Ki: " << Ki << ",Kd: " << Kd << endl;
+    }
   #endif
   }
 #endif
@@ -347,6 +353,10 @@ void PID::Twiddle(double cte)
       // Indicate that the coefficients were incremented
       coeff_update = UP;
     }
+  }
+  else
+  {
+    cout << "Not twiddling" << endl;
   }
 }
 #endif

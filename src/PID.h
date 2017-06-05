@@ -24,6 +24,9 @@ using namespace std;
 // to be validated accordingly
 enum coefficient_update {START, UP, DOWN, MUL_1_1, MUL_0_9};
 
+// Type of PID
+enum pid_type {STEERING, THROTTLE};
+
 class PID
 {
 public:
@@ -44,7 +47,7 @@ public:
   virtual ~PID();
 
   // Initializes the PID controller
-  void Init(double Kp_to_set, double Ki_to_set, double Kd_to_set);
+  void Init(double Kp_to_set, double Ki_to_set, double Kd_to_set, pid_type type_of_pid_to_set);
 
   // Updates the PID error variables given cross track error
   void UpdateError(double cte);
@@ -61,6 +64,8 @@ private:
   // Variable to keep track of the sum of cross track errors
   double sum_cte;
 
+  // Type of PID(Throttle or Steering)
+  pid_type type_of_pid;
 #if SGD
   // Vector which keeps track of the steering angle expected 'y'
   vector<double> sgd_y;

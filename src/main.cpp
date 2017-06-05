@@ -35,17 +35,23 @@ int main()
 {
   uWS::Hub h;
 
-  PID pid;
+  // PID object for controlling steering angle
+  PID pidSteer;
+
+  // PID object for controlling throttle
+  PID pidThrottle;
 
   // Initialize the pid variable with the values for the constants of
   // the respective components
 #if SGD
-  pid.Init(0, 0, 0);
+  pidSteer.Init(0, 0, 0, STEERING);
+  pidThrottle.Init(0, 0, 0, THROTTLE);
 #elif TWIDDLE
-  pid.Init(0.10, 0.0001, 0.75);
+  pidSteer.Init(0.05, 0.0001, 0.75, STEERING);
+  pidThrottle.Init(0.05, 0.0001, 0.75, THROTTLE);
 #endif
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
+  h.onMessage([&pidSteer, &pidThrottle](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode)
   {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -64,12 +70,15 @@ int main()
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
           double steer_value;
+          double throttle_value;
 
           // Update the total error for this iteration
-          pid.TotalError(cte);
+          pidSteer.TotalError(cte);
 
           // Calculate the steer value
-          steer_value = -(pid.Kp * pid.p_error) - (pid.Ki * pid.i_error) - (pid.Kd * pid.d_error);
+          steer_value = - (pidSteer.Kp * pidSteer.p_error) \
+                        - (pidSteer.Ki * pidSteer.i_error) \
+                        - (pidSteer.Kd * pidSteer.d_error);
 
           // If the steering angle is beyond +/- 1 limit the steering angle
           // to +/- 0.5 to prevent sharp turns
@@ -82,13 +91,29 @@ int main()
             steer_value = 0.5;
           }
 
+          // Create a factor which decides the speed error based on the base
+          // of 20 miles an hour. If the car is driving straight i.e. the
+          // steering angle is low then we can go faster but if the steering
+          // angle is smaller, then the car needs to slow down because the car
+          // is most likely turning.
+          double new_speed = 5 * (1.0 - abs(steer_value)) + 25;
+          double speed_error = speed - new_speed;
+
+          // Update the total error for this iteration
+          pidThrottle.TotalError(speed_error);
+
+          // Calculate the throttle value
+          throttle_value =  - (pidThrottle.Kp * pidThrottle.p_error) \
+                            - (pidThrottle.Ki * pidThrottle.i_error) \
+                            - (pidThrottle.Kd * pidThrottle.d_error);
+
         #if DEBUG_VERBOSE
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
         #endif
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.15;
+          msgJson["throttle"] = throttle_value;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
         #if DEBUG_VERBOSE
           std::cout << msg << std::endl;
