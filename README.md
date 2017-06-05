@@ -127,7 +127,7 @@ Even though the SGD algorithm for tuning the coefficients works, the swerving of
 
 The twiddle algorithm worked really well for this problem. The initial coefficient values to start the algorithm tuning mattered a lot in my implementation. I did have to manually play around with the initial and potential coefficient values to arrive at a working solution. The final coefficient values after 2 laps were:
 
-```Kp: 0.225, Ki: 0.0002,Kd: 0.75```
+```Kp: 0.225, Ki: 1e-05,Kd: 0.75```
 
 The algorithm definitely hovers around the initial coefficient values for "I" and "D" components but increases the "P" component from it's initial value. Having a higher value assigned for the coefficient of the "D" component stabilizes the drive significantly. This is because the future error is accounted for, so the system is less prone to overshoot. Compared to the SGD algorithm based model, the swerving is reduced a lot with the twiddle model and the drive is relatively smoother. Below is a .gif (from Twiddle.mp4 in the data/simulator) which shows a smoother drive in the 2nd lap around the same portion.   
 
